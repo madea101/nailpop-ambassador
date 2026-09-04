@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nail Pop Studio Ambassador Program</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF6B9D;
+    --pink-dark:#D6237A;
+    --pink-bg:#FFF5F9;
+    --ink:#1A1420;
+    --white:#ffffff;
+    --line: rgba(26,20,32,0.12);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Plus Jakarta Sans', sans-serif;
+    background:var(--pink-bg);
+    color:var(--ink);
+  }
+  .wrap{max-width:640px; margin:0 auto; padding:56px 24px 96px;}
+  .kicker{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.02em;
+    color:var(--pink-dark);
+    margin:0 0 8px;
+  }
+  h1{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:52px;
+    line-height:0.98;
+    margin:0 0 18px;
+  }
+  .lede{font-size:17px; line-height:1.6; color:#4a4152; max-width:52ch; margin:0 0 40px;}
+
+  form{background:var(--white); border-radius:20px; padding:36px; border:1px solid var(--line);}
+  fieldset{border:none; padding:0; margin:0 0 32px;}
+  legend{
+    font-family:'Barlow Condensed', sans-serif;
+    font-weight:700;
+    font-size:22px;
+    padding:0 0 14px;
+    width:100%;
+    border-bottom:2px solid var(--pink);
+    margin-bottom:18px;
+  }
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .row.single{grid-template-columns:1fr;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px; color:#5a5064;}
+  input, select{
+    width:100%; padding:12px 14px; font-size:15px; font-family:inherit;
+    border:1.5px solid var(--line); border-radius:10px; background:var(--pink-bg);
+    color:var(--ink);
+  }
+  input:focus, select:focus{outline:2px solid var(--pink); outline-offset:1px; border-color:var(--pink);}
+
+  .sku-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .sku-card{
+    border:1.5px solid var(--line); border-radius:12px; padding:12px 10px; text-align:center;
+    cursor:pointer; font-size:13px; font-weight:600; background:var(--pink-bg);
+  }
+  .sku-card.selected{border-color:var(--pink-dark); background:#FFE3EF; box-shadow: inset 0 0 0 1px var(--pink-dark);}
+
+  button{
+    width:100%; margin-top:12px; padding:16px; border:none; border-radius:12px;
+    background:var(--pink-dark); color:var(--white); font-size:16px; font-weight:700;
+    font-family:'Plus Jakarta Sans', sans-serif; cursor:pointer;
+  }
+  button:disabled{opacity:0.5; cursor:not-allowed;}
+  button:hover:not(:disabled){background:#B81C68;}
+
+  .note{font-size:13px; color:#7a7183; margin-top:14px; line-height:1.5;}
+  #status{margin-top:18px; padding:14px 16px; border-radius:10px; font-size:14px; display:none;}
+  #status.ok{display:block; background:#E8F7EE; color:#1E6B3C;}
+  #status.err{display:block; background:#FDE8ED; color:#B0243F;}
+
+  @media (max-width:520px){
+    h1{font-size:38px;}
+    .row{grid-template-columns:1fr;}
+    .sku-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="kicker">Nail Pop Studio · Ambassador Program</p>
+  <h1>Apply to become<br>an ambassador</h1>
+  <p class="lede">Pick the set you want to create with, tell us where to ship it, and sign your agreement. Once it's signed, your order goes out automatically — no back and forth.</p>
+
+  <form id="applyForm">
+    <fieldset>
+      <legend>You</legend>
+      <div class="row">
+        <div>
+          <label for="name">Full name</label>
+          <input id="name" name="name" required />
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" />
+        </div>
+        <div>
+          <label for="platform">Main platform</label>
+          <select id="platform" name="platform">
+            <option>TikTok</option>
+            <option>Instagram</option>
+            <option>YouTube</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="socialHandle">@handle</label>
+          <input id="socialHandle" name="socialHandle" placeholder="@yourhandle" required />
+        </div>
+        <div>
+          <label for="followers">Follower count</label>
+          <input id="followers" name="followers" type="number" min="0" />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Choose your SKU</legend>
+      <div id="skuGrid" class="sku-grid"></div>
+      <input type="hidden" id="sku" name="sku" required />
+    </fieldset>
+
+    <fieldset>
+      <legend>Ship to</legend>
+      <div class="row single">
+        <div>
+          <label for="address1">Address</label>
+          <input id="address1" name="address1" required />
+        </div>
+      </div>
+      <div class="row single">
+        <div>
+          <label for="address2">Apt / suite (optional)</label>
+          <input id="address2" name="address2" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="city">City</label>
+          <input id="city" name="city" required />
+        </div>
+        <div>
+          <label for="province">State</label>
+          <input id="province" name="province" required />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="zip">ZIP</label>
+          <input id="zip" name="zip" required />
+        </div>
+        <div>
+          <label for="country">Country</label>
+          <input id="country" name="country" value="US" required />
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Stay in the loop</legend>
+      <label style="display:flex; align-items:flex-start; gap:10px; font-weight:400; font-size:14px; color:#4a4152;">
+        <input type="checkbox" id="marketingOptIn" name="marketingOptIn" required style="width:18px; height:18px; margin-top:2px; flex-shrink:0;" />
+        <span>I agree to receive emails from Nail Pop Studio about my ambassador set and content — this is how we'll follow up once it arrives.</span>
+      </label>
+    </fieldset>
+
+    <button type="submit" id="submitBtn">Submit application</button>
+    <p class="note">After you submit, we'll email you an agreement to review and sign. Your set ships automatically as soon as it's signed — no separate order to place.</p>
+    <div id="status"></div>
+  </form>
+</div>
+
+<script>
+  const skuGrid = document.getElementById('skuGrid');
+  const skuInput = document.getElementById('sku');
+
+  fetch('/api/skus').then(r => r.json()).then(skus => {
+    skuGrid.innerHTML = skus.map(s =>
+      `<div class="sku-card" data-sku="${s.sku}">${s.title}</div>`
+    ).join('');
+    skuGrid.querySelectorAll('.sku-card').forEach(card => {
+      card.addEventListener('click', () => {
+        skuGrid.querySelectorAll('.sku-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        skuInput.value = card.dataset.sku;
+      });
+    });
+  });
+
+  const form = document.getElementById('applyForm');
+  const status = document.getElementById('status');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    status.className = ''; status.style.display = 'none';
+
+    if (!skuInput.value) {
+      status.className = 'err'; status.textContent = 'Pick a SKU before submitting.';
+      return;
+    }
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    submitBtn.disabled = true; submitBtn.textContent = 'Submitting…';
+
+    try {
+      const res = await fetch('/api/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Something went wrong.');
+      status.className = 'ok';
+      status.textContent = result.message;
+      form.reset();
+      skuGrid.querySelectorAll('.sku-card').forEach(c => c.classList.remove('selected'));
+    } catch (err) {
+      status.className = 'err';
+      status.textContent = err.message;
+    } finally {
+      submitBtn.disabled = false; submitBtn.textContent = 'Submit application';
+    }
+  });
+</script>
+</body>
+</html>
