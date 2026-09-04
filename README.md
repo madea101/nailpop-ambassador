@@ -103,36 +103,31 @@ and click **Mark Delivered** once a package arrives. That's what starts the day
 > like (AfterShip, 17TRACK, ShipStation) in `cron/jobs.js`, calling the same
 > `UPDATE orders SET delivered_at = ...` the admin route does.
 
-## 5. Email setup (Shopify Email + Flow)
+## 5. Email setup (Resend — already automated, nothing to build)
 
-Shopify Email has no API for one-off triggered sends — Shopify's own answer to
-this request is "not supported natively, use a webhook/3rd-party." So this app
-doesn't send anything itself. Instead, on the right day it **tags the order**
-(`followup-day7`, `followup-day10`, `followup-day13`), and you build a Shopify
-Flow per tag that fires the actual Shopify Email send. One-time setup, in
-Shopify Admin:
+Shopify Email has no API for one-off triggered sends, and it turns out
+Shopify Flow doesn't have a merchant-facing "tags added" trigger for orders
+either (only a developer-only webhook topic) — so the original tag-and-let-Flow-
+catch-it design can't actually work. Instead, `lib/followupEmails.js` sends
+the day 7/10/13 emails **directly**, using the same Resend account and
+verified domain already set up for contract emails. There's nothing to build
+in Shopify Admin for this — it's already live.
 
-1. Go to **Marketing → Automations** (or **Apps → Flow**) and create the 3
-   emails you want sent — the day-7, day-10, and day-13 nudges — in the
-   Shopify Email editor, same as any campaign.
-2. Go to **Flow → Create workflow**, one per stage:
-   - **Trigger:** Order tags added
-   - **Condition:** Tags contains `followup-day7` (swap in `followup-day10` /
-     `followup-day13` for the other two workflows)
-   - **Action:** Send Marketing Email → pick the email you built in step 1
-3. Turn each workflow on.
+The order still gets tagged (`followup-day7` / `followup-day10` /
+`followup-day13`) purely so you can see follow-up stage at a glance in
+Shopify admin — that tag isn't what triggers the send, so nothing breaks if
+tagging ever fails.
 
-**Important:** Flow's email action only fires for customers who've accepted
-marketing emails. The application form has a required opt-in checkbox for
-exactly this reason, and `lib/shopify.js` sets `accepts_marketing: true` on
-the order's customer when it's created — so as long as creators check that
-box, the automations will fire. If a creator's email later shows as
-unsubscribed in Shopify, the tag will still get added but the email won't
-send — that's Shopify enforcing consent, not a bug in this app.
+Want to test a send without waiting for the real 7/10/13 day timing? POST to
+`/admin/orders/:id/send-test-followup?token=ADMIN_TOKEN&tag=followup-day7`
+(swap the tag for day10/day13) — find the order's id from `/admin/orders`.
 
-> Want to swap to something else later (Klaviyo, Resend)? `lib/shopifyEmailTrigger.js`
-> is the only file involved — replace `tagOrderForFollowup` with an API call to
-> whichever service you pick.
+Want to change the email copy? Edit `EMAIL_COPY` in `lib/followupEmails.js`
+directly — plain HTML strings, no template system.
+
+> Want to swap to a different provider later (Klaviyo, SendGrid, etc.)?
+> `lib/followupEmails.js` is the only file involved — replace the Resend
+> `fetch` call with that provider's API.
 
 ## 6. Deploy
 

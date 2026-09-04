@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { db } from "../db.js";
+import { sendFollowupEmail } from "../lib/followupEmails.js";
 
 export const adminRouter = Router();
 
@@ -103,6 +104,28 @@ adminRouter.post("/admin/orders/:id/mark-delivered", requireAdminToken, (req, re
   `).run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: "Order not found or already marked delivered." });
   res.json({ ok: true });
+});
+
+// Manual test send — fires one of the 3 follow-up emails right now, without
+// waiting for the real day 7/10/13 timing or touching followup_count. Handy
+// for confirming the email actually sends/arrives. Visit as a POST with
+// ?token=ADMIN_TOKEN&tag=followup-day7 (or day10 / day13).
+adminRouter.post("/admin/orders/:id/send-test-followup", requireAdminToken, async (req, res) => {
+  const tag = req.query.tag || "followup-day7";
+  const order = db.prepare(`
+    SELECT o.*, a.name AS creator_name, a.email AS creator_email
+    FROM orders o JOIN applications a ON a.id = o.application_id
+    WHERE o.id = ?
+  `).get(req.params.id);
+  if (!order) return res.status(404).json({ error: "Order not found." });
+
+  try {
+    await sendFollowupEmail({ to: order.creator_email, name: order.creator_name, tag });
+    res.json({ ok: true, sentTo: order.creator_email, tag });
+  } catch (err) {
+    console.error("Test follow-up send failed", err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 function escapeHtml(str) {
