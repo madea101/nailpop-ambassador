@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS applications (
   country TEXT,
   marketing_opt_in INTEGER NOT NULL DEFAULT 0, -- required for Shopify Flow's "Send Marketing Email" action to fire
   status TEXT NOT NULL DEFAULT 'pending_contract', -- pending_contract, contract_sent, contract_signed, order_placed, cancelled
+  archived_at TEXT, -- set manually from /admin/orders to hide an application from the default view
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -54,8 +55,13 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 `);
 
-// Migration for the existing production database, which predates this column.
+// Migrations for the existing production database, which predates these columns.
 const orderColumns = db.prepare(`PRAGMA table_info(orders)`).all().map((c) => c.name);
 if (!orderColumns.includes("content_created_at")) {
   db.exec(`ALTER TABLE orders ADD COLUMN content_created_at TEXT`);
+}
+
+const applicationColumns = db.prepare(`PRAGMA table_info(applications)`).all().map((c) => c.name);
+if (!applicationColumns.includes("archived_at")) {
+  db.exec(`ALTER TABLE applications ADD COLUMN archived_at TEXT`);
 }
