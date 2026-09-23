@@ -23,11 +23,13 @@ async function tagDueFollowups() {
   // rely on Flow to catch the tag and send it. The order still gets tagged
   // too, purely for your own visibility in Shopify admin — it's not required
   // for the email to go out.
+  // Orders marked content_created (from /admin/orders) are skipped entirely —
+  // once a creator's content is actually posted, no more nudge emails go out.
   const delivered = db.prepare(`
     SELECT o.*, a.name AS creator_name, a.email AS creator_email
     FROM orders o
     JOIN applications a ON a.id = o.application_id
-    WHERE o.delivered_at IS NOT NULL AND o.followup_count < ?
+    WHERE o.delivered_at IS NOT NULL AND o.followup_count < ? AND o.content_created_at IS NULL
   `).all(MAX_FOLLOWUPS);
 
   const now = new Date();
