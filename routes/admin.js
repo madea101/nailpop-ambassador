@@ -34,7 +34,7 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
       a.id AS application_id, a.name, a.email, a.phone, a.social_handle, a.platform,
       a.followers, a.sku AS application_sku, a.address1, a.address2, a.city, a.province,
       a.zip, a.country, a.marketing_opt_in, a.status AS application_status,
-      a.created_at AS applied_at,
+      a.created_at AS applied_at, a.archived_at,
       c.status AS contract_status, c.signed_at,
       o.id AS order_id, o.shopify_order_name, o.sku AS order_sku, o.tracking_number,
       o.tracking_company, o.shipped_at, o.delivered_at, o.followup_count,
@@ -83,9 +83,12 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
   button.mark-btn:hover { background: #333; }
   button.content-btn { background: #f0f0f0; color: #1a1a1a; border: 1px solid #ddd; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; }
   button.content-btn.done { background: #e6f6ec; color: #0a7d34; border-color: #b8e6c8; }
+  button.archive-btn { background: none; color: #888; border: 1px solid #ddd; padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; }
+  button.archive-btn.archived { background: #fff4e5; color: #9a6b00; border-color: #f0d9a8; }
   button:disabled { opacity: 0.5; cursor: default; }
   .table-wrap { overflow-x: auto; }
   .empty-row td { color: #888; padding: 1.5rem 0.75rem; }
+  tr.archived-row { opacity: 0.55; }
 </style>
 </head>
 <body>
@@ -130,6 +133,13 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
         <option value="status">Application status</option>
       </select>
     </label>
+    <label>Show
+      <select id="archiveFilter">
+        <option value="active">Active (hide archived)</option>
+        <option value="archived">Archived only</option>
+        <option value="all">All</option>
+      </select>
+    </label>
     <button type="button" class="clear-btn" id="clearBtn">Clear filters</button>
     <span class="counts" id="counts"></span>
   </div>
@@ -140,7 +150,7 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
       <tr>
         <th>Applicant</th><th>Platform</th><th>SKU</th><th>Ship to</th><th>Opt-in</th>
         <th>Application</th><th>Contract</th><th>Order</th><th>Tracking</th><th>Shipped</th>
-        <th>Delivered</th><th>Follow-ups</th><th>Content created?</th>
+        <th>Delivered</th><th>Follow-ups</th><th>Content created?</th><th>Archive</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -178,6 +188,7 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
       const statusVal = document.getElementById("statusFilter").value;
       const deliveredVal = document.getElementById("deliveredFilter").value;
       const contentVal = document.getElementById("contentFilter").value;
+      const archiveVal = document.getElementById("archiveFilter").value;
       const sortVal = document.getElementById("sortBy").value;
 
       let rows = DATA.filter((r) => {
@@ -187,6 +198,8 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
         if (deliveredVal === "no" && r.delivered_at) return false;
         if (contentVal === "yes" && !r.content_created_at) return false;
         if (contentVal === "no" && r.content_created_at) return false;
+        if (archiveVal === "active" && r.archived_at) return false;
+        if (archiveVal === "archived" && !r.archived_at) return false;
         return true;
       });
 
@@ -219,7 +232,7 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
       const tbody = document.getElementById("tbody");
 
       if (!rows.length) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="13">No applications match these filters.</td></tr>';
+        tbody.innerHTML = '<tr class="empty-row"><td colspan="14">No applications match these filters.</td></tr>';
         return;
       }
 
@@ -241,7 +254,11 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
             + (contentDone ? "&#10003; Done — emails stopped" : "Mark content created") + '</button>'
           : '<span class="muted">—</span>';
 
-        return '<tr>'
+        const isArchived = !!r.archived_at;
+        const archiveCell = '<button class="archive-btn ' + (isArchived ? "archived" : "") + '" data-action="toggle-archive" data-id="' + r.application_id + '" data-archived="' + isArchived + '">'
+          + (isArchived ? "Unarchive" : "Archive") + '</button>';
+
+        return '<tr' + (isArchived ? ' class="archived-row"' : '') + '>'
           + '<td><strong>' + escapeHtml(r.name) + '</strong><br><span class="muted">' + escapeHtml(r.email) + '</span>'
             + (r.phone ? '<br><span class="muted">' + escapeHtml(r.phone) + '</span>' : '') + '</td>'
           + '<td>' + escapeHtml(r.platform || "—") + '<br><span class="muted">' + escapeHtml(r.social_handle || "")
@@ -257,6 +274,7 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
           + '<td>' + deliveredCell + '</td>'
           + '<td>' + (r.order_id ? r.followup_count + ' / 3' : "—") + (r.last_followup_at ? '<br><span class="muted">Last ' + escapeHtml(r.last_followup_at) + '</span>' : '') + '</td>'
           + '<td>' + contentCell + '</td>'
+          + '<td>' + archiveCell + '</td>'
           + '</tr>';
       }).join("\\n");
 
@@ -298,18 +316,41 @@ adminRouter.get("/admin/orders", requireAdminToken, (req, res) => {
           }
         });
       });
+
+      tbody.querySelectorAll("[data-action='toggle-archive']").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.id;
+          const currentlyArchived = btn.dataset.archived === "true";
+          btn.disabled = true;
+          const res = await fetch("/admin/applications/" + id + "/archive?token=" + encodeURIComponent(TOKEN), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ archived: !currentlyArchived }),
+          });
+          if (res.ok) {
+            const app = DATA.find((r) => String(r.application_id) === String(id));
+            if (app) app.archived_at = currentlyArchived ? null : new Date().toISOString();
+            applyFiltersAndSort();
+          } else {
+            btn.disabled = false;
+            alert("Failed to update — check server logs.");
+          }
+        });
+      });
     }
 
     document.getElementById("searchInput").addEventListener("input", applyFiltersAndSort);
     document.getElementById("statusFilter").addEventListener("change", applyFiltersAndSort);
     document.getElementById("deliveredFilter").addEventListener("change", applyFiltersAndSort);
     document.getElementById("contentFilter").addEventListener("change", applyFiltersAndSort);
+    document.getElementById("archiveFilter").addEventListener("change", applyFiltersAndSort);
     document.getElementById("sortBy").addEventListener("change", applyFiltersAndSort);
     document.getElementById("clearBtn").addEventListener("click", () => {
       document.getElementById("searchInput").value = "";
       document.getElementById("statusFilter").value = "";
       document.getElementById("deliveredFilter").value = "";
       document.getElementById("contentFilter").value = "";
+      document.getElementById("archiveFilter").value = "active";
       document.getElementById("sortBy").value = "applied_desc";
       applyFiltersAndSort();
     });
@@ -340,6 +381,21 @@ adminRouter.post("/admin/orders/:id/content-created", requireAdminToken, (req, r
     .run(created ? new Date().toISOString() : null, req.params.id);
 
   res.json({ ok: true, contentCreated: !!created });
+});
+
+// Archives (or unarchives) an application so it drops out of the default
+// dashboard view. Purely a visibility toggle — doesn't touch contract/order
+// data or the follow-up cron, which key off orders.content_created_at, not
+// this field.
+adminRouter.post("/admin/applications/:id/archive", requireAdminToken, (req, res) => {
+  const { archived } = req.body || {};
+  const application = db.prepare(`SELECT id FROM applications WHERE id = ?`).get(req.params.id);
+  if (!application) return res.status(404).json({ error: "Application not found." });
+
+  db.prepare(`UPDATE applications SET archived_at = ? WHERE id = ?`)
+    .run(archived ? new Date().toISOString() : null, req.params.id);
+
+  res.json({ ok: true, archived: !!archived });
 });
 
 // Manual test send — fires one of the 3 follow-up emails right now, without
