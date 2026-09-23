@@ -49,6 +49,13 @@ CREATE TABLE IF NOT EXISTS orders (
   delivered_at TEXT,
   followup_count INTEGER NOT NULL DEFAULT 0,
   last_followup_at TEXT,
+  content_created_at TEXT, -- set manually from /admin/orders; once set, follow-up emails stop
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 `);
+
+// Migration for the existing production database, which predates this column.
+const orderColumns = db.prepare(`PRAGMA table_info(orders)`).all().map((c) => c.name);
+if (!orderColumns.includes("content_created_at")) {
+  db.exec(`ALTER TABLE orders ADD COLUMN content_created_at TEXT`);
+}
