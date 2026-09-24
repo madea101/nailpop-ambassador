@@ -8,9 +8,9 @@ export const AMBASSADOR_SKUS = [
     variantId: "44760505352226",
   },
   {
-    sku: "NP-MIRROR-GLAZE-ALM",
-    title: "Mirror Glaze Almond Nails",
-    variantId: "44760510660642",
+    sku: "NP-WHITE-FRENCH-ALM",
+    title: "White French Almond Nails",
+    variantId: "43778707587106",
   },
   {
     sku: "NP-PEARL-PRISM-SQ",
